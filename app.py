@@ -1,43 +1,46 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 20 13:52:09 2025
-
-@author: LAB
-"""
-
 import streamlit as st
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, decode_predictions, preprocess_input
-from tensorflow.keras.preprocessing import image
-import numpy as np
-from PIL import Image
-import pickle
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
-#load model
-with open('model.pkl', 'rb') as f:
-    model = pickle.load(f)
-    
-#set title application
-st.title("Image Classification with MobileNetV2 by Ei Thazin Tun")
+# Page configuration
+st.set_page_config(page_title="k-Means Clustering App", layout="centered")
 
-#file upload
-upload_file = st.file_uploader("Upload image:",type=["jpg","jpeg","png"])
+# Title
+st.title("🔍 K-Means Clustering App with Iris Dataset")
 
-if upload_file is not None:
-    #display image on screen
-    img=Image.open(upload_file)
-    st.image(img, caption="Upload Image")
-    
-    #preprocessing
-    img=img.resize((224,224))
-    x=image.img_to_array(img)
-    x=np.expand_dims(x, axis=0)
-    x=preprocess_input(x)
-    
-    #prediction
-    preds=model.predict(x)
-    top_preds=decode_predictions(preds, top=3)[0]
-    
-    #display prediction
-    st.subheader("Prediction:")
-    for i,pred in enumerate(top_preds):
-        st.write(f"{i+1}. **pred[1]** - {round(pred[2]*100,2)}%")
+# Sidebar slider for selecting k
+st.sidebar.header("Configure Clustering")
+k = st.sidebar.slider("Select number of clusters (k)", 2, 10, 3)
+
+# Load the Iris dataset
+iris = load_iris()
+X = iris.data
+
+# Reduce dimensions for visualization
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X)
+
+# Apply KMeans
+kmeans = KMeans(n_clusters=k, random_state=42)
+y_kmeans = kmeans.fit_predict(X)
+
+# Transform cluster centers for plotting
+centers_2d = pca.transform(kmeans.cluster_centers_)
+
+# Plotting
+fig, ax = plt.subplots()
+scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], c=y_kmeans, cmap='tab10', s=50)
+ax.scatter(centers_2d[:, 0], centers_2d[:, 1], c='black', s=200, marker='X', label='Centroids')
+ax.set_title("Clusters (2D PCA Projection)")
+ax.set_xlabel("PCA1")
+ax.set_ylabel("PCA2")
+
+# Add custom legend
+for i in range(k):
+    ax.scatter([], [], color=scatter.cmap(i / k), label=f'Cluster {i}')
+ax.legend()
+
+# Display in Streamlit
+st.pyplot(fig)
